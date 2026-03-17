@@ -1,5 +1,6 @@
 {
   "port": 9054,
+  "hostname": "chronosmcp",
   "logRetention": 100,
   "rules": [
     {

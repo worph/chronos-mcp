@@ -30,9 +30,10 @@ A cron-based scheduler that triggers MCP tool calls at configured times. Define 
 
 - **Cron scheduling**: Standard cron expressions with seconds precision
 - **MCP tool invocation**: Call any tool on any MCP-compatible server on schedule
+- **MCP server interface**: Exposes its own MCP server so LLMs can manage cron rules via MCP
 - **Multiple transports**: Supports `stdio`, `http`, and `sse` MCP transports
 - **Parameter templates**: Dynamic parameter values using date/time template variables
-- **Web UI**: Browser-based interface to manage rules and MCP connections
+- **Web UI**: Browser-based interface to manage rules, view logs, and see MCP server config
 - **Docker-ready**: Containerized, stateless deployment
 - **Multiple rules**: Define as many cron rules as needed, each targeting different tools or servers
 
@@ -189,7 +190,8 @@ Example parameter mapping:
 chronos-mcp/
 ├── src/
 │   ├── index.ts           # Application entry point
-│   ├── api.ts             # REST API for Web UI
+│   ├── api.ts             # REST API for Web UI + MCP server mount
+│   ├── mcp-server.ts      # MCP server interface (tools for managing rules)
 │   ├── scheduler.ts       # Cron engine and rule management
 │   ├── mcp-client.ts      # MCP client for calling target servers
 │   ├── config.ts          # Configuration management
@@ -202,13 +204,15 @@ chronos-mcp/
 ├── config.example.json    # Example configuration
 ├── config.json            # Runtime configuration (gitignored)
 ├── Dockerfile
-├── docker-compose.yml
+├── docker-compose.yml     # Dev stack (see Development section)
 └── package.json
 ```
 
 ## Development
 
-Development is done entirely through the Docker stack. The `docker-compose.yml` bind-mounts `src/`, `web/`, `tsconfig.json`, and `config.json` into the container so that local edits are reflected without a full image rebuild.
+The `docker-compose.yml` **is the dev stack**. It bind-mounts `src/`, `web/`, `tsconfig.json`, and `config.json` into the container so that local edits are reflected without a full image rebuild. All development and testing should be done through this stack.
+
+> **Note:** The compose file uses an external Docker network called `mcp-network`. Create it once before first use: `docker network create mcp-network`
 
 ```bash
 # First time / after dependency changes — full rebuild
@@ -225,7 +229,14 @@ docker logs -f chronos-mcp
 docker compose down
 ```
 
-The Web UI is available at `http://localhost:9054`.
+| Endpoint | URL |
+|----------|-----|
+| Web UI | `http://localhost:9054` |
+| REST API | `http://localhost:9054/api/` |
+| MCP Server (HTTP) | `http://localhost:9054/mcp` |
+| MCP Server (SSE) | `http://localhost:9054/mcp/sse` |
+
+For production, the CI pipeline (`.github/workflows/docker-publish.yml`) builds and pushes the image to `ghcr.io` on pushes to `main` or version tags.
 
 ## Environment Variables
 
@@ -253,6 +264,19 @@ The REST API powers the Web UI and can be used directly:
 | `GET` | `/api/logs` | Get all execution logs |
 | `GET` | `/api/status` | Get scheduler status |
 | `POST` | `/api/restart` | Reload and restart all rules |
+| `GET` | `/api/mcp-server-info` | Get MCP server endpoints, tools, and Claude config |
+
+### MCP Server Endpoints
+
+Chronos also exposes an MCP server interface so LLMs can manage cron rules directly via MCP:
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/mcp` | Stateless HTTP (Streamable) MCP endpoint |
+| `GET` | `/mcp/sse` | SSE-based MCP connection |
+| `POST` | `/mcp/messages` | Message endpoint for SSE sessions |
+
+**MCP Tools:** `list_rules`, `create_rule`, `update_rule`, `delete_rule`, `toggle_rule`, `trigger_rule`, `get_logs`, `clear_logs`, `get_status`
 
 ## License
 

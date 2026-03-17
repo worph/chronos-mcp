@@ -20,6 +20,7 @@ export const CronRuleSchema = z.object({
 
 export const AppConfigSchema = z.object({
   port: z.number().int().min(1).max(65535).default(9054),
+  hostname: z.string().default("localhost"),
   logRetention: z.number().int().min(1).default(100),
   rules: z.array(CronRuleSchema).default([]),
 });

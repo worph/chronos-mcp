@@ -173,9 +173,9 @@ export function createApp(mcpServer: MCPServer): express.Application {
   });
 
   // GET /api/mcp-server-info
-  app.get("/api/mcp-server-info", (req: Request, res: Response) => {
-    const host = req.headers.host || `localhost:${getConfig().port}`;
-    const baseUrl = `http://${host}/mcp`;
+  app.get("/api/mcp-server-info", (_req: Request, res: Response) => {
+    const config = getConfig();
+    const baseUrl = `http://${config.hostname}:${config.port}/mcp`;
     const tools = mcpServer.getToolDefinitions().map((t) => ({
       name: t.name,
       description: t.description,
