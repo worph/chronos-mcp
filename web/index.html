@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chronos MCP</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+      color: #333;
+    }
+    h1 { font-size: 24px; margin-bottom: 4px; }
+    .subtitle { color: #666; font-size: 14px; margin-bottom: 24px; }
+    .card {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .card-header h2 { margin: 0; font-size: 18px; flex: 1; }
+    .status-bar {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .stat-box {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 12px 20px;
+      text-align: center;
+      flex: 1;
+      min-width: 100px;
+    }
+    .stat-box .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: #2563eb;
+    }
+    .stat-box .stat-label {
+      font-size: 12px;
+      color: #888;
+      margin-top: 2px;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .status-badge.success { background: #d4edda; color: #155724; }
+    .status-badge.error   { background: #f8d7da; color: #721c24; }
+    .status-badge.warning { background: #fff3cd; color: #856404; }
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    /* Rules list */
+    .rules-list { display: flex; flex-direction: column; gap: 12px; }
+    .rule-card {
+      border: 1px solid #e9ecef;
+      border-radius: 10px;
+      padding: 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      transition: box-shadow 0.15s;
+    }
+    .rule-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .rule-card.disabled { opacity: 0.55; }
+    .rule-info { flex: 1; min-width: 0; }
+    .rule-name { font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+    .rule-meta {
+      font-size: 12px;
+      color: #6c757d;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .rule-meta code {
+      background: #f8f9fa;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+      font-size: 11px;
+    }
+    .rule-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+    /* Toggle switch */
+    .toggle {
+      position: relative;
+      display: inline-block;
+      width: 38px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+    .toggle input { display: none; }
+    .toggle-slider {
+      position: absolute;
+      inset: 0;
+      background: #ccc;
+      border-radius: 11px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      width: 16px; height: 16px;
+      left: 3px; top: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    .toggle input:checked + .toggle-slider { background: #2563eb; }
+    .toggle input:checked + .toggle-slider::before { transform: translateX(16px); }
+
+    /* Buttons */
+    button {
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    .btn-primary  { background: #2563eb; color: white; }
+    .btn-primary:hover  { background: #1d4ed8; }
+    .btn-secondary { background: #e9ecef; color: #495057; }
+    .btn-secondary:hover { background: #dee2e6; }
+    .btn-success  { background: #28a745; color: white; }
+    .btn-success:hover  { background: #218838; }
+    .btn-danger   { background: #dc3545; color: white; }
+    .btn-danger:hover   { background: #c82333; }
+    .btn-icon {
+      padding: 6px 10px;
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 6px;
+      color: #6c757d;
+      font-size: 14px;
+    }
+    .btn-icon:hover { background: #e9ecef; color: #333; }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 20px;
+    }
+    .modal-overlay.hidden { display: none; }
+    .modal {
+      background: white;
+      border-radius: 12px;
+      padding: 28px;
+      width: 100%;
+      max-width: 560px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+    .modal h3 { margin: 0 0 20px; font-size: 20px; }
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid #eee;
+    }
+
+    /* Form */
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+      font-size: 13px;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 9px 12px;
+      margin-bottom: 14px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: inherit;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+    }
+    textarea {
+      font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+      min-height: 100px;
+      resize: vertical;
+    }
+    .hint {
+      color: #888;
+      font-size: 12px;
+      margin-top: -10px;
+      margin-bottom: 14px;
+      line-height: 1.5;
+    }
+    .transport-fields { display: none; }
+    .transport-fields.active { display: block; }
+    .field-group {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+    .field-group legend {
+      font-weight: 600;
+      font-size: 12px;
+      color: #6c757d;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 10px;
+      display: block;
+    }
+    .field-group input, .field-group select, .field-group textarea {
+      background: white;
+    }
+
+    /* Logs panel */
+    .logs-list { display: flex; flex-direction: column; gap: 8px; }
+    .log-entry {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 12px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      font-size: 12px;
+    }
+    .log-status { flex-shrink: 0; }
+    .log-info { flex: 1; min-width: 0; }
+    .log-rule { font-weight: 600; color: #333; margin-bottom: 2px; }
+    .log-time { color: #6c757d; }
+    .log-detail { color: #555; margin-top: 2px; font-family: 'SF Mono', Monaco, monospace; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .log-duration { color: #adb5bd; flex-shrink: 0; }
+    .badge-success { background: #d4edda; color: #155724; padding: 2px 8px; border-radius: 20px; font-weight: 600; }
+    .badge-error   { background: #f8d7da; color: #721c24; padding: 2px 8px; border-radius: 20px; font-weight: 600; }
+
+    /* Collapsible */
+    .collapsible { cursor: pointer; user-select: none; }
+    .collapsible::after { content: "▼"; font-size: 10px; margin-left: 8px; opacity: 0.5; }
+    .collapsible.collapsed::after { content: "▶"; }
+    .collapsible-content.hidden { display: none; }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 20px; left: 50%;
+      transform: translateX(-50%);
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      z-index: 200;
+      animation: slideUp 0.3s ease;
+    }
+    .toast.success { background: #28a745; color: white; }
+    .toast.error   { background: #dc3545; color: white; }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+      to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #adb5bd;
+      font-size: 14px;
+    }
+    .empty-state .icon { font-size: 36px; margin-bottom: 8px; }
+
+    .tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+    .tab {
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid #e9ecef;
+      background: white;
+      color: #6c757d;
+    }
+    .tab.active { background: #2563eb; color: white; border-color: #2563eb; }
+
+    .hidden { display: none !important; }
+
+    /* MCP Server card styles */
+    .endpoint-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .endpoint-row label {
+      min-width: 80px;
+      margin-bottom: 0;
+      font-size: 12px;
+      color: #6c757d;
+    }
+    .endpoint-row code {
+      flex: 1;
+      background: #f8f9fa;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+      word-break: break-all;
+    }
+    .btn-copy {
+      padding: 4px 10px;
+      font-size: 11px;
+      background: #e9ecef;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      color: #495057;
+      white-space: nowrap;
+    }
+    .btn-copy:hover { background: #dee2e6; }
+    .tool-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 12px;
+    }
+    .tool-item {
+      background: #eef2ff;
+      color: #3730a3;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+    }
+    .config-block {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 14px;
+      border-radius: 8px;
+      font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+      font-size: 12px;
+      margin-top: 12px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      position: relative;
+    }
+    .config-block .btn-copy {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: #333;
+      color: #ccc;
+    }
+    .config-block .btn-copy:hover { background: #444; }
+    .about-content { font-size: 14px; line-height: 1.6; color: #555; }
+    .about-content p { margin: 0 0 10px; }
+    .about-content ul { margin: 4px 0 10px 18px; padding: 0; }
+    .about-content li { margin-bottom: 4px; }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .section-header h3 { margin: 0; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <h1>Chronos MCP</h1>
+  <p class="subtitle">Cron-based scheduler for MCP tool calls</p>
+
+  <!-- What is this? -->
+  <div class="card">
+    <div class="card-header collapsible collapsed" onclick="toggleAbout('about-body', this)">
+      <h2>What is this?</h2>
+    </div>
+    <div id="about-body" class="collapsible-content hidden">
+      <div class="about-content">
+        <p><strong>Chronos MCP</strong> is a cron-based scheduler that triggers MCP (Model Context Protocol) tool calls at configured times.</p>
+        <p>It connects to any MCP-compatible server via stdio, HTTP, or SSE transports and invokes tools on a schedule defined by cron expressions.</p>
+        <p><strong>Key features:</strong></p>
+        <ul>
+          <li>Schedule any MCP tool call with cron expressions</li>
+          <li>Supports stdio, HTTP (Streamable), and SSE transports</li>
+          <li>Template variables like <code>{{now}}</code>, <code>{{date}}</code>, <code>{{time}}</code> resolved at trigger time</li>
+          <li>Execution logging with history</li>
+          <li>This server also exposes its own MCP interface, so LLMs can manage cron rules via MCP</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status Bar -->
+  <div class="card">
+    <div class="status-bar">
+      <div class="stat-box">
+        <div class="stat-value" id="stat-active">–</div>
+        <div class="stat-label">Active Rules</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value" id="stat-total">–</div>
+        <div class="stat-label">Total Rules</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value" id="stat-last-status">–</div>
+        <div class="stat-label">Last Status</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value" id="stat-last-time" style="font-size:14px;padding-top:8px">–</div>
+        <div class="stat-label">Last Run</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rules -->
+  <div class="card">
+    <div class="section-header">
+      <h3>Scheduled Rules</h3>
+      <button class="btn-primary" onclick="openAddModal()">+ Add Rule</button>
+    </div>
+    <div id="rules-list" class="rules-list">
+      <div class="empty-state">
+        <div class="icon">⏰</div>
+        <div>No rules yet. Add your first scheduled rule above.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Logs -->
+  <div class="card">
+    <div class="card-header collapsible collapsed" onclick="toggleCard('logs-body', this)">
+      <h2>Execution Logs</h2>
+    </div>
+    <div id="logs-body" class="collapsible-content hidden">
+      <div class="tabs">
+        <button class="tab active" onclick="switchLogsTab('all', this)">All</button>
+        <button class="tab" id="rule-logs-tab" onclick="switchLogsTab('rule', this)" style="display:none">Rule</button>
+      </div>
+      <div id="logs-list" class="logs-list">
+        <div class="empty-state"><div>No executions yet.</div></div>
+      </div>
+      <button class="btn-secondary btn-sm" style="margin-top:12px" onclick="loadLogs()">Refresh</button>
+    </div>
+  </div>
+
+  <!-- MCP Server -->
+  <div class="card">
+    <div class="card-header collapsible collapsed" onclick="toggleCard('mcp-server-body', this)">
+      <h2>MCP Server</h2>
+    </div>
+    <div id="mcp-server-body" class="collapsible-content hidden">
+      <div id="mcp-server-info">
+        <p style="color:#888;font-size:13px">Loading...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add/Edit Modal -->
+  <div class="modal-overlay hidden" id="rule-modal">
+    <div class="modal">
+      <h3 id="modal-title">Add Rule</h3>
+
+      <label for="f-name">Name</label>
+      <input type="text" id="f-name" placeholder="Daily report">
+
+      <label for="f-schedule">Cron Schedule</label>
+      <input type="text" id="f-schedule" placeholder="0 9 * * *">
+      <p class="hint">5-field cron expression. Examples: <code>* * * * *</code> (every minute), <code>0 9 * * 1-5</code> (weekdays at 9am)</p>
+
+      <label for="f-tool">Tool Name</label>
+      <input type="text" id="f-tool" placeholder="echo">
+
+      <label for="f-params">Parameters (JSON)</label>
+      <textarea id="f-params" placeholder='{"message": "{{now}}"}'></textarea>
+      <p class="hint">
+        Template vars: <code>{{now}}</code> <code>{{date}}</code> <code>{{time}}</code>
+        <code>{{timestamp}}</code> <code>{{year}}</code> <code>{{month}}</code>
+        <code>{{day}}</code> <code>{{hour}}</code> <code>{{minute}}</code> <code>{{second}}</code>
+      </p>
+
+      <div class="field-group">
+        <legend>MCP Target</legend>
+
+        <label for="f-transport">Transport</label>
+        <select id="f-transport" onchange="onTransportChange()">
+          <option value="http">HTTP (Streamable)</option>
+          <option value="sse">SSE</option>
+          <option value="stdio">stdio</option>
+        </select>
+
+        <div id="tf-http" class="transport-fields active">
+          <label for="f-url">Server URL</label>
+          <input type="url" id="f-url" placeholder="http://localhost:8080/mcp">
+          <label for="f-auth">Auth Token</label>
+          <input type="password" id="f-auth" placeholder="Optional bearer token">
+        </div>
+
+        <div id="tf-sse" class="transport-fields">
+          <label for="f-url-sse">Server URL</label>
+          <input type="url" id="f-url-sse" placeholder="http://localhost:8080/mcp/sse">
+          <label for="f-auth-sse">Auth Token</label>
+          <input type="password" id="f-auth-sse" placeholder="Optional bearer token">
+        </div>
+
+        <div id="tf-stdio" class="transport-fields">
+          <label for="f-command">Command</label>
+          <input type="text" id="f-command" placeholder="npx">
+          <label for="f-args">Args (JSON array)</label>
+          <input type="text" id="f-args" placeholder='["-y", "my-mcp-server"]'>
+        </div>
+      </div>
+
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="f-enabled" checked style="width:auto;margin:0">
+        <span>Enabled</span>
+      </label>
+
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn-primary" onclick="saveRule()">Save Rule</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+  <script src="app.js"></script>
+</body>
+</html>

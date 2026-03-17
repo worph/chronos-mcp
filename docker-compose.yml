@@ -1,0 +1,23 @@
+services:
+  chronos-mcp:
+    build: .
+    container_name: chronos-mcp
+    hostname: chronosmcp
+    restart: unless-stopped
+    ports:
+      - "9054:9054"
+    volumes:
+      - ./data:/app/data
+      - ./config.json:/app/config.json
+      - ./src:/app/src:ro
+      - ./web:/app/web:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro
+    environment:
+      - NODE_ENV=production
+      - TZ=UTC
+      - CONFIG_PATH=/app/config.json
+
+networks:
+  default:
+    name: mcp-network
+    external: true

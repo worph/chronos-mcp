@@ -1,0 +1,37 @@
+{
+  "port": 9054,
+  "logRetention": 100,
+  "rules": [
+    {
+      "id": "00000000-0000-0000-0000-000000000001",
+      "name": "Hourly heartbeat",
+      "schedule": "0 * * * *",
+      "enabled": false,
+      "target": {
+        "transport": "http",
+        "url": "http://my-mcp-server:8080/mcp",
+        "authToken": ""
+      },
+      "tool": "echo",
+      "params": {
+        "message": "heartbeat at {{now}}"
+      }
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000002",
+      "name": "Daily report via stdio",
+      "schedule": "0 9 * * 1-5",
+      "enabled": false,
+      "target": {
+        "transport": "stdio",
+        "command": "npx",
+        "args": ["-y", "some-mcp-server"]
+      },
+      "tool": "generate_report",
+      "params": {
+        "date": "{{date}}",
+        "format": "markdown"
+      }
+    }
+  ]
+}

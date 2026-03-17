@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /c/workspace/Sandbox/telegram-mcp/src -type f -name *.ts)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm run:*)",
+      "Bash(curl:*)",
+      "Bash(kill 21339)",
+      "Bash(docker compose:*)",
+      "Bash(fuser -k 9054/tcp)",
+      "Bash(pkill -f \"node.*dist/index\")",
+      "Bash(pkill -f \"ts-node-dev.*index\")",
+      "Bash(netstat -tlnp)",
+      "Bash(pnpm build:*)",
+      "Bash(node:*)",
+      "Bash(python3 -m json.tool)",
+      "Bash(fuser 9054/tcp)",
+      "Bash(pkill -f \"node dist/index\")",
+      "Bash(docker ps:*)",
+      "Bash(docker stop:*)",
+      "Bash(grep -E \"\\(package\\\\.json|tsconfig|\\\\.ts$|\\\\.md$\\)\")",
+      "Bash(git init:*)",
+      "Bash(git remote:*)",
+      "Bash(git branch:*)",
+      "Bash(git config:*)"
+    ]
+  }
+}
