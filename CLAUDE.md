@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-Chronos MCP is a cron-based scheduler that triggers MCP (Model Context Protocol) tool calls at configured times. It connects to any MCP-compatible server via stdio, HTTP, or SSE transports and invokes tools on a schedule defined by cron expressions.
+Chronos MCP is a cron-based scheduler that triggers MCP (Model Context Protocol) tool calls at configured times. It connects to any MCP-compatible server via stdio or HTTP transports and invokes tools on a schedule defined by cron expressions.
 
 ## Commands
 
@@ -29,7 +29,7 @@ The app is a single Node.js process with an Express HTTP server, an in-memory cr
 **Core modules:**
 
 - **`scheduler.ts`** — Manages a `Map<ruleId, ScheduledTask>` of node-cron tasks. When a cron fires, it resolves parameter templates, calls the MCP tool, and logs the result. `reloadRules()` stops all tasks then starts enabled ones.
-- **`mcp-client.ts`** — Creates a fresh `@modelcontextprotocol/sdk` `Client` per invocation, connects via the configured transport (stdio/HTTP/SSE), calls the tool with a 30s timeout, then closes. Wraps transports to silently handle servers that don't support `notifications/initialized`.
+- **`mcp-client.ts`** — Creates a fresh `@modelcontextprotocol/sdk` `Client` per invocation, connects via the configured transport (stdio/HTTP), calls the tool with a 30s timeout, then closes. Wraps transports to silently handle servers that don't support `notifications/initialized`.
 - **`template.ts`** — Resolves `{{variable}}` placeholders (now, date, time, timestamp, year, month, day, hour, minute, second) in parameter objects at trigger time. Recursively handles nested objects and arrays.
 - **`config.ts`** — Reads/writes `config.json` (path from `CONFIG_PATH` env var). Holds config in a module-level singleton. All mutations go through `saveConfig()` which writes to disk.
 - **`logger.ts`** — In-memory log store (`Map<ruleId, ExecutionLog[]>`) with debounced persistence to `data/logs.json`. Capped by `logRetention` (default 100 per rule).

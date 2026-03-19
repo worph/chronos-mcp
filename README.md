@@ -265,6 +265,20 @@ The REST API powers the Web UI and can be used directly:
 | `POST` | `/api/restart` | Reload and restart all rules |
 | `GET` | `/api/mcp-server-info` | Get MCP server endpoints, tools, and Claude config |
 
+### Adding to Claude Code
+
+To register Chronos as an MCP server in Claude Code (available across all sessions):
+
+```bash
+claude mcp add --transport http --scope user chronos-mcp http://localhost:9054/mcp
+```
+
+For project-level only (current project):
+
+```bash
+claude mcp add --transport http --scope project chronos-mcp http://localhost:9054/mcp
+```
+
 ### MCP Server Endpoints
 
 Chronos also exposes an MCP server interface so LLMs can manage cron rules directly via MCP:

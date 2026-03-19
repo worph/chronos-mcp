@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "chronos-mcp": {
+      "type": "http",
+      "url": "http://localhost:9054/mcp"
+    }
+  }
+}
