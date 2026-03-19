@@ -407,11 +407,11 @@
     <div id="about-body" class="collapsible-content hidden">
       <div class="about-content">
         <p><strong>Chronos MCP</strong> is a cron-based scheduler that triggers MCP (Model Context Protocol) tool calls at configured times.</p>
-        <p>It connects to any MCP-compatible server via stdio, HTTP, or SSE transports and invokes tools on a schedule defined by cron expressions.</p>
+        <p>It connects to any MCP-compatible server via stdio or HTTP (Streamable) transports and invokes tools on a schedule defined by cron expressions.</p>
         <p><strong>Key features:</strong></p>
         <ul>
           <li>Schedule any MCP tool call with cron expressions</li>
-          <li>Supports stdio, HTTP (Streamable), and SSE transports</li>
+          <li>Supports stdio and HTTP (Streamable) transports</li>
           <li>Template variables like <code>{{now}}</code>, <code>{{date}}</code>, <code>{{time}}</code> resolved at trigger time</li>
           <li>Execution logging with history</li>
           <li>This server also exposes its own MCP interface, so LLMs can manage cron rules via MCP</li>
@@ -514,7 +514,6 @@
         <label for="f-transport">Transport</label>
         <select id="f-transport" onchange="onTransportChange()">
           <option value="http">HTTP (Streamable)</option>
-          <option value="sse">SSE</option>
           <option value="stdio">stdio</option>
         </select>
 
@@ -523,13 +522,6 @@
           <input type="url" id="f-url" placeholder="http://localhost:8080/mcp">
           <label for="f-auth">Auth Token</label>
           <input type="password" id="f-auth" placeholder="Optional bearer token">
-        </div>
-
-        <div id="tf-sse" class="transport-fields">
-          <label for="f-url-sse">Server URL</label>
-          <input type="url" id="f-url-sse" placeholder="http://localhost:8080/mcp/sse">
-          <label for="f-auth-sse">Auth Token</label>
-          <input type="password" id="f-auth-sse" placeholder="Optional bearer token">
         </div>
 
         <div id="tf-stdio" class="transport-fields">

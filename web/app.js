@@ -167,8 +167,6 @@ function clearForm() {
   document.getElementById('f-transport').value = 'http';
   document.getElementById('f-url').value = '';
   document.getElementById('f-auth').value = '';
-  document.getElementById('f-url-sse').value = '';
-  document.getElementById('f-auth-sse').value = '';
   document.getElementById('f-command').value = '';
   document.getElementById('f-args').value = '[]';
   document.getElementById('f-enabled').checked = true;
@@ -183,8 +181,6 @@ function fillForm(rule) {
   document.getElementById('f-transport').value = rule.target.transport;
   document.getElementById('f-url').value = rule.target.url || '';
   document.getElementById('f-auth').value = rule.target.authToken || '';
-  document.getElementById('f-url-sse').value = rule.target.url || '';
-  document.getElementById('f-auth-sse').value = rule.target.authToken || '';
   document.getElementById('f-command').value = rule.target.command || '';
   document.getElementById('f-args').value = JSON.stringify(rule.target.args || []);
   document.getElementById('f-enabled').checked = rule.enabled;
@@ -228,10 +224,6 @@ async function saveRule() {
       showToast('Invalid JSON in Args', 'error');
       return;
     }
-  } else if (transport === 'sse') {
-    target.url = document.getElementById('f-url-sse').value.trim();
-    const auth = document.getElementById('f-auth-sse').value.trim();
-    if (auth) target.authToken = auth;
   } else {
     target.url = document.getElementById('f-url').value.trim();
     const auth = document.getElementById('f-auth').value.trim();
@@ -364,11 +356,6 @@ function renderMcpServerInfo(info) {
         <label>HTTP (Streamable)</label>
         <code id="mcp-http-url">${escHtml(info.httpUrl)}</code>
         <button class="btn-copy" onclick="copyText('mcp-http-url')">Copy</button>
-      </div>
-      <div class="endpoint-row">
-        <label>SSE</label>
-        <code id="mcp-sse-url">${escHtml(info.sseUrl)}</code>
-        <button class="btn-copy" onclick="copyText('mcp-sse-url')">Copy</button>
       </div>
     </div>
 

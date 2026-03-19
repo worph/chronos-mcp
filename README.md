@@ -12,7 +12,7 @@ A cron-based scheduler that triggers MCP tool calls at configured times. Define 
 │  │  Cron Engine │───────►│    MCP Client        │   │
 │  │  (node-cron) │        │  • stdio transport   │   │
 │  └──────────────┘        │  • http transport    │   │
-│         ▲                │  • sse transport     │   │
+│         ▲                │                      │   │
 │         │ rules          └──────────┬──────────┘   │
 │  ┌──────┴──────┐                    │ tool call     │
 │  │   Web UI    │ :9054              ▼               │
@@ -31,7 +31,7 @@ A cron-based scheduler that triggers MCP tool calls at configured times. Define 
 - **Cron scheduling**: Standard cron expressions with seconds precision
 - **MCP tool invocation**: Call any tool on any MCP-compatible server on schedule
 - **MCP server interface**: Exposes its own MCP server so LLMs can manage cron rules via MCP
-- **Multiple transports**: Supports `stdio`, `http`, and `sse` MCP transports
+- **Multiple transports**: Supports `stdio` and `http` (Streamable) MCP transports
 - **Parameter templates**: Dynamic parameter values using date/time template variables
 - **Web UI**: Browser-based interface to manage rules, view logs, and see MCP server config
 - **Docker-ready**: Containerized, stateless deployment
@@ -109,11 +109,11 @@ Examples:
 
 | Field | Description |
 |-------|-------------|
-| Transport | `stdio`, `http`, or `sse` |
+| Transport | `stdio` or `http` |
 | Command | For stdio: the command to spawn the MCP server process |
 | Args | For stdio: command arguments array |
-| URL | For http/sse: the MCP server endpoint |
-| Auth Token | For http/sse: optional Bearer token for authentication |
+| URL | For http: the MCP server endpoint |
+| Auth Token | For http: optional Bearer token for authentication |
 
 ### Parameter Templates
 
@@ -234,7 +234,6 @@ docker compose down
 | Web UI | `http://localhost:9054` |
 | REST API | `http://localhost:9054/api/` |
 | MCP Server (HTTP) | `http://localhost:9054/mcp` |
-| MCP Server (SSE) | `http://localhost:9054/mcp/sse` |
 
 For production, the CI pipeline (`.github/workflows/docker-publish.yml`) builds and pushes the image to `ghcr.io` on pushes to `main` or version tags.
 
@@ -273,8 +272,6 @@ Chronos also exposes an MCP server interface so LLMs can manage cron rules direc
 | Method | Path | Description |
 |--------|------|-------------|
 | `POST` | `/mcp` | Stateless HTTP (Streamable) MCP endpoint |
-| `GET` | `/mcp/sse` | SSE-based MCP connection |
-| `POST` | `/mcp/messages` | Message endpoint for SSE sessions |
 
 **MCP Tools:** `list_rules`, `create_rule`, `update_rule`, `delete_rule`, `toggle_rule`, `trigger_rule`, `get_logs`, `clear_logs`, `get_status`
 

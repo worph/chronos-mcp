@@ -1,5 +1,4 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import {
   CallToolRequestSchema,
@@ -35,10 +34,10 @@ const TOOL_DEFINITIONS = [
           type: "object",
           description: "MCP server target configuration",
           properties: {
-            transport: { type: "string", enum: ["stdio", "http", "sse"] },
+            transport: { type: "string", enum: ["stdio", "http"] },
             command: { type: "string", description: "Command for stdio transport" },
             args: { type: "array", items: { type: "string" }, description: "Args for stdio transport" },
-            url: { type: "string", description: "URL for http/sse transport" },
+            url: { type: "string", description: "URL for http transport" },
             authToken: { type: "string", description: "Optional bearer token" },
           },
           required: ["transport"],
@@ -131,8 +130,6 @@ const TOOL_DEFINITIONS = [
 ];
 
 export class MCPServer {
-  private transports: Map<string, SSEServerTransport> = new Map();
-
   private createServer(): Server {
     const server = new Server(
       { name: "chronos-mcp", version: "1.0.0" },
@@ -281,42 +278,10 @@ export class MCPServer {
       await transport.handleRequest(req, res, req.body);
     });
 
-    // SSE endpoint
-    router.get("/sse", async (req: Request, res: Response) => {
-      console.log("MCP SSE connection established");
-      const transport = new SSEServerTransport("/mcp/messages", res);
-      const sessionId = transport.sessionId;
-      this.transports.set(sessionId, transport);
-      console.log(`MCP session created: ${sessionId}`);
-
-      const server = this.createServer();
-
-      res.on("close", () => {
-        console.log(`MCP SSE connection closed: ${sessionId}`);
-        this.transports.delete(sessionId);
-        server.close().catch(console.error);
-      });
-
-      await server.connect(transport);
-    });
-
-    // Messages endpoint for SSE transport
-    router.post("/messages", async (req: Request, res: Response) => {
-      const sessionId = req.query.sessionId as string;
-      console.log(`MCP message received for session: ${sessionId}`);
-      const transport = this.transports.get(sessionId);
-      if (!transport) {
-        res.status(404).json({ error: "Session not found" });
-        return;
-      }
-      await transport.handlePostMessage(req, res);
-    });
-
     return router;
   }
 
   async stop(): Promise<void> {
-    this.transports.clear();
     console.log("MCP Server stopped");
   }
 }

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const TargetConfigSchema = z.object({
-  transport: z.enum(["stdio", "http", "sse"]),
+  transport: z.enum(["stdio", "http"]),
   command: z.string().optional(),
   args: z.array(z.string()).optional(),
   url: z.string().optional(),

@@ -181,7 +181,6 @@ export function createApp(mcpServer: MCPServer): express.Application {
       description: t.description,
     }));
     res.json({
-      sseUrl: `${baseUrl}/sse`,
       httpUrl: baseUrl,
       tools,
       claudeConfig: {

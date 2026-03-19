@@ -1,5 +1,4 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
@@ -54,15 +53,9 @@ export async function callTool(
       headers["Authorization"] = `Bearer ${target.authToken}`;
     }
 
-    if (target.transport === "http") {
-      rawTransport = new StreamableHTTPClientTransport(url, {
-        requestInit: { headers },
-      });
-    } else {
-      rawTransport = new SSEClientTransport(url, {
-        requestInit: { headers },
-      });
-    }
+    rawTransport = new StreamableHTTPClientTransport(url, {
+      requestInit: { headers },
+    });
   }
 
   const transport = wrapTransport(rawTransport);
