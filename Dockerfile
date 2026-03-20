@@ -57,7 +57,7 @@ COPY config.example.json ./config.example.json
 RUN mkdir -p /app/data
 
 # Default config path
-ENV CONFIG_PATH=/app/config.json
+ENV CONFIG_PATH=/app/data/config.json
 ENV NODE_ENV=production
 
 # Expose port

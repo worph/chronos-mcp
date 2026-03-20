@@ -49,7 +49,7 @@ The app is a single Node.js process with an Express HTTP server, an in-memory cr
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `CONFIG_PATH` | `./config.json` | Path to config file |
+| `CONFIG_PATH` | `./data/config.json` (Docker: `/app/data/config.json`) | Path to config file |
 | `PORT` | `9054` (from config) | HTTP port |
 | `LOG_LEVEL` | `info` | Logging verbosity |
 | `TZ` | `UTC` | Timezone for cron evaluation |

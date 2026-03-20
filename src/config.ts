@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { AppConfig, AppConfigSchema } from "./types";
 
-const CONFIG_PATH = process.env.CONFIG_PATH || path.join(process.cwd(), "config.json");
+const CONFIG_PATH = process.env.CONFIG_PATH || path.join(process.cwd(), "data", "config.json");
 
 let _config: AppConfig = AppConfigSchema.parse({});
 
