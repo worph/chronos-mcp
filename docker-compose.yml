@@ -16,8 +16,14 @@ services:
       - NODE_ENV=production
       - TZ=UTC
       - CONFIG_PATH=/app/config.json
+      - DISCOVERY_PORT=9099
+      - MCP_PORT=9054
+    networks:
+      - mcp-network
+      - mcp-net
 
 networks:
-  default:
-    name: mcp-network
+  mcp-network:
+    external: true
+  mcp-net:
     external: true
