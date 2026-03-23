@@ -4,3 +4,4 @@ data/logs.json
 config.json
 .env*
 pnpm-debug.log*
+.claude/settings.local.json

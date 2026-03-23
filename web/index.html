@@ -381,6 +381,191 @@
       color: #ccc;
     }
     .config-block .btn-copy:hover { background: #444; }
+    /* Cron selector */
+    .cron-mode-toggle {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 10px;
+    }
+    .cron-mode-btn {
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      border: 1px solid #e9ecef;
+      border-radius: 6px;
+      background: white;
+      color: #6c757d;
+      cursor: pointer;
+    }
+    .cron-mode-btn.active {
+      background: #2563eb;
+      color: white;
+      border-color: #2563eb;
+    }
+    .cron-presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .cron-preset-btn {
+      padding: 5px 12px;
+      font-size: 12px;
+      border: 1px solid #dee2e6;
+      border-radius: 20px;
+      background: white;
+      color: #495057;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .cron-preset-btn:hover { border-color: #2563eb; color: #2563eb; }
+    .cron-preset-btn.active { background: #eef2ff; border-color: #2563eb; color: #2563eb; }
+    .cron-builder {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .cron-builder-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      font-size: 13px;
+    }
+    .cron-builder-row select {
+      width: auto;
+      margin-bottom: 0;
+      padding: 6px 10px;
+      min-width: 80px;
+    }
+    .cron-builder-row label {
+      margin-bottom: 0;
+      font-weight: 400;
+      color: #555;
+    }
+    .cron-next-runs {
+      background: #eef2ff;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 14px;
+      font-size: 12px;
+      color: #3730a3;
+    }
+    .cron-next-runs .next-label {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .cron-next-runs .next-item {
+      padding: 2px 0;
+      font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+    }
+    .cron-next-runs.invalid {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    /* Beacon discovery */
+    .beacon-panel {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+    .beacon-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .beacon-panel-header span {
+      font-weight: 600;
+      font-size: 13px;
+      color: #333;
+    }
+    .btn-scan {
+      padding: 5px 14px;
+      font-size: 12px;
+      font-weight: 500;
+      border: 1px solid #2563eb;
+      border-radius: 6px;
+      background: white;
+      color: #2563eb;
+      cursor: pointer;
+    }
+    .btn-scan:hover { background: #eef2ff; }
+    .btn-scan:disabled { opacity: 0.5; cursor: not-allowed; }
+    .beacon-servers-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .beacon-server-item {
+      padding: 10px 12px;
+      background: white;
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .beacon-server-item:hover { border-color: #2563eb; }
+    .beacon-server-item.selected {
+      border-color: #2563eb;
+      background: #eef2ff;
+    }
+    .beacon-server-name {
+      font-weight: 600;
+      font-size: 13px;
+      color: #333;
+    }
+    .beacon-server-desc {
+      font-size: 12px;
+      color: #6c757d;
+      margin-top: 2px;
+    }
+    .beacon-server-url {
+      font-size: 11px;
+      font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+      color: #888;
+      margin-top: 2px;
+    }
+    .beacon-tools-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .beacon-tool-item {
+      padding: 8px 12px;
+      background: white;
+      border: 1px solid #e9ecef;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .beacon-tool-item:hover { border-color: #2563eb; }
+    .beacon-tool-item.selected {
+      border-color: #2563eb;
+      background: #eef2ff;
+    }
+    .beacon-tool-name {
+      font-weight: 600;
+      font-size: 12px;
+      font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+      color: #333;
+    }
+    .beacon-tool-desc {
+      font-size: 11px;
+      color: #6c757d;
+      margin-top: 2px;
+    }
+    .beacon-empty, .beacon-loading {
+      font-size: 12px;
+      color: #888;
+      text-align: center;
+      padding: 12px;
+    }
+
     .about-content { font-size: 14px; line-height: 1.6; color: #555; }
     .about-content p { margin: 0 0 10px; }
     .about-content ul { margin: 4px 0 10px 18px; padding: 0; }
@@ -493,9 +678,74 @@
       <label for="f-name">Name</label>
       <input type="text" id="f-name" placeholder="Daily report">
 
-      <label for="f-schedule">Cron Schedule</label>
-      <input type="text" id="f-schedule" placeholder="0 9 * * *">
-      <p class="hint">5-field cron expression. Examples: <code>* * * * *</code> (every minute), <code>0 9 * * 1-5</code> (weekdays at 9am)</p>
+      <label>Cron Schedule</label>
+      <div class="cron-mode-toggle">
+        <button type="button" class="cron-mode-btn active" onclick="setCronMode('simple')">Simple</button>
+        <button type="button" class="cron-mode-btn" onclick="setCronMode('advanced')">Advanced</button>
+      </div>
+
+      <!-- Simple mode: presets + builder -->
+      <div id="cron-simple">
+        <div class="cron-presets">
+          <button type="button" class="cron-preset-btn" onclick="applyCronPreset('* * * * *', this)">Every minute</button>
+          <button type="button" class="cron-preset-btn" onclick="applyCronPreset('*/5 * * * *', this)">Every 5 min</button>
+          <button type="button" class="cron-preset-btn" onclick="applyCronPreset('*/15 * * * *', this)">Every 15 min</button>
+          <button type="button" class="cron-preset-btn" onclick="applyCronPreset('0 * * * *', this)">Hourly</button>
+          <button type="button" class="cron-preset-btn" onclick="applyCronPreset('0 0 * * *', this)">Daily (midnight)</button>
+          <button type="button" class="cron-preset-btn" onclick="applyCronPreset('0 9 * * 1-5', this)">Weekdays 9am</button>
+          <button type="button" class="cron-preset-btn" onclick="applyCronPreset('0 0 * * 0', this)">Weekly (Sun)</button>
+          <button type="button" class="cron-preset-btn" onclick="applyCronPreset('0 0 1 * *', this)">Monthly</button>
+        </div>
+
+        <div class="cron-builder">
+          <div class="cron-builder-row">
+            <label>Run</label>
+            <select id="cron-frequency" onchange="updateCronFromBuilder()">
+              <option value="minute">Every minute</option>
+              <option value="hour">Hourly</option>
+              <option value="day" selected>Daily</option>
+              <option value="week">Weekly</option>
+              <option value="month">Monthly</option>
+            </select>
+            <span id="cron-at-label">at</span>
+            <select id="cron-hour" onchange="updateCronFromBuilder()">
+              <!-- filled by JS -->
+            </select>
+            <span id="cron-colon">:</span>
+            <select id="cron-minute" onchange="updateCronFromBuilder()">
+              <!-- filled by JS -->
+            </select>
+            <span id="cron-on-label" class="hidden">on</span>
+            <select id="cron-weekday" class="hidden" onchange="updateCronFromBuilder()">
+              <option value="0">Sunday</option>
+              <option value="1">Monday</option>
+              <option value="2">Tuesday</option>
+              <option value="3">Wednesday</option>
+              <option value="4">Thursday</option>
+              <option value="5">Friday</option>
+              <option value="6">Saturday</option>
+            </select>
+            <select id="cron-monthday" class="hidden" onchange="updateCronFromBuilder()">
+              <!-- filled by JS -->
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Advanced mode: raw input -->
+      <div id="cron-advanced" class="hidden">
+        <input type="text" id="f-schedule" placeholder="0 9 * * *">
+        <p class="hint">5-field cron: minute hour day-of-month month day-of-week</p>
+      </div>
+
+      <!-- Hidden field that always holds the actual value -->
+      <input type="hidden" id="f-schedule-value">
+
+      <!-- Next runs preview -->
+      <div id="cron-next-runs" class="cron-next-runs hidden">
+        <div class="next-label">Next runs:</div>
+        <div id="cron-next-list"></div>
+      </div>
 
       <label for="f-tool">Tool Name</label>
       <input type="text" id="f-tool" placeholder="echo">
@@ -510,6 +760,18 @@
 
       <div class="field-group">
         <legend>MCP Target</legend>
+
+        <!-- Beacon discovery panel -->
+        <div class="beacon-panel" id="beacon-panel">
+          <div class="beacon-panel-header">
+            <span>Beacon Discovery</span>
+            <button type="button" class="btn-scan" id="beacon-scan-btn" onclick="runBeaconDiscovery()">Scan Network</button>
+          </div>
+          <div id="beacon-loading" class="beacon-loading hidden">Scanning for MCP servers...</div>
+          <div id="beacon-empty" class="beacon-empty hidden">No servers found on the network.</div>
+          <div id="beacon-servers" class="beacon-servers-list"></div>
+          <div id="beacon-tools" class="beacon-tools-list"></div>
+        </div>
 
         <label for="f-transport">Transport</label>
         <select id="f-transport" onchange="onTransportChange()">

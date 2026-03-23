@@ -1,5 +1,6 @@
 import express, { Request, Response, NextFunction } from "express";
 import path from "path";
+import dgram from "dgram";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 import { getConfig, saveConfig, updateConfig } from "./config";
@@ -190,6 +191,58 @@ export function createApp(mcpServer: MCPServer): express.Application {
           },
         },
       },
+    });
+  });
+
+  // GET /api/beacon/discover — UDP multicast scan for local MCP servers
+  app.get("/api/beacon/discover", (_req: Request, res: Response) => {
+    const servers: Array<{
+      name: string;
+      description: string;
+      url: string;
+      tools: Array<{ name: string; description: string; inputSchema: Record<string, unknown> }>;
+    }> = [];
+    const socket = dgram.createSocket({ type: "udp4", reuseAddr: true });
+
+    socket.on("message", (data, rinfo) => {
+      try {
+        const msg = JSON.parse(data.toString());
+        if (msg.type === "announce") {
+          servers.push({
+            name: msg.name,
+            description: msg.description || "",
+            url: `http://${rinfo.address}:${msg.port}/mcp`,
+            tools: msg.tools || [],
+          });
+        }
+      } catch {
+        /* ignore malformed */
+      }
+    });
+
+    socket.on("error", (err) => {
+      socket.close();
+      res.status(500).json({ error: err.message });
+    });
+
+    socket.bind(0, () => {
+      try {
+        socket.addMembership("239.255.99.1");
+      } catch (err) {
+        socket.close();
+        res.status(500).json({
+          error: "Multicast not available: " + (err instanceof Error ? err.message : String(err)),
+        });
+        return;
+      }
+      const discoveryMsg = Buffer.from(JSON.stringify({ type: "discovery" }));
+      const discoveryPort = parseInt(process.env.DISCOVERY_PORT || "9099", 10);
+      socket.send(discoveryMsg, discoveryPort, "239.255.99.1");
+
+      setTimeout(() => {
+        socket.close();
+        res.json({ servers });
+      }, 2000);
     });
   });
 
