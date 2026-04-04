@@ -566,6 +566,144 @@
       padding: 12px;
     }
 
+    /* Tier status line */
+    .tier-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 14px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .tier-status.connected { background: #d4edda; color: #155724; }
+    .tier-status.beacon    { background: #eef2ff; color: #3730a3; }
+    .tier-status.manual    { background: #f8f9fa; color: #6c757d; }
+    .tier-status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+    }
+    .tier-status-action {
+      margin-left: auto;
+      background: none;
+      border: none;
+      color: inherit;
+      text-decoration: underline;
+      cursor: pointer;
+      font-size: 12px;
+      padding: 0;
+      opacity: 0.8;
+    }
+    .tier-status-action:hover { opacity: 1; }
+
+    /* Tier scanning spinner */
+    .tier-scanning {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 16px;
+      color: #6c757d;
+      font-size: 13px;
+    }
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid #e9ecef;
+      border-top-color: #2563eb;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Prompt textarea (Tier 1) */
+    #f-prompt {
+      font-family: inherit;
+      min-height: 150px;
+      resize: vertical;
+      line-height: 1.5;
+      font-size: 14px;
+    }
+
+    /* Tool picker cards (Tier 2) */
+    .tier2-tool-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .tier2-tool-card {
+      padding: 12px;
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+      background: white;
+    }
+    .tier2-tool-card:hover { border-color: #2563eb; }
+    .tier2-tool-card.selected { border-color: #2563eb; background: #eef2ff; }
+    .tier2-tool-card-name {
+      font-weight: 600;
+      font-size: 13px;
+      font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+    }
+    .tier2-tool-card-desc {
+      font-size: 11px;
+      color: #6c757d;
+      margin-top: 4px;
+    }
+    .tier2-tool-card-server {
+      font-size: 10px;
+      color: #adb5bd;
+      margin-top: 4px;
+    }
+
+    /* Smart param fields */
+    .smart-param-textarea {
+      font-family: inherit;
+      min-height: 80px;
+      line-height: 1.5;
+    }
+
+    /* Advanced options toggle */
+    .advanced-toggle {
+      display: inline-block;
+      font-size: 12px;
+      color: #6c757d;
+      cursor: pointer;
+      padding: 8px 0;
+      border: none;
+      background: none;
+      margin-bottom: 8px;
+    }
+    .advanced-toggle:hover { color: #2563eb; }
+
+    /* Rule card prompt display */
+    .rule-prompt {
+      font-size: 13px;
+      color: #555;
+      margin-top: 4px;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .rule-badge-claude {
+      display: inline-flex;
+      align-items: center;
+      background: #d4edda;
+      color: #155724;
+      padding: 1px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
     .about-content { font-size: 14px; line-height: 1.6; color: #555; }
     .about-content p { margin: 0 0 10px; }
     .about-content ul { margin: 4px 0 10px 18px; padding: 0; }
@@ -578,30 +716,109 @@
       margin-bottom: 12px;
     }
     .section-header h3 { margin: 0; font-size: 16px; }
+
+    /* Header bar with title + action buttons */
+    .page-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+    .page-header-left h1 { margin-bottom: 4px; }
+    .page-header-left .subtitle { margin: 0; }
+    .page-header-actions {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+      padding-top: 4px;
+    }
+    .btn-header {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid #e9ecef;
+      background: white;
+      color: #6c757d;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+      transition: all 0.15s;
+      line-height: 1;
+    }
+    .btn-header:hover { background: #f8f9fa; color: #333; border-color: #dee2e6; }
+    .btn-header.active { background: #2563eb; color: white; border-color: #2563eb; }
+
+    /* Slide-in panel */
+    .side-panel-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.3);
+      z-index: 90;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s, visibility 0.2s;
+    }
+    .side-panel-overlay.open { opacity: 1; visibility: visible; }
+    .side-panel {
+      position: fixed;
+      top: 0;
+      right: -400px;
+      width: 400px;
+      max-width: 90vw;
+      height: 100vh;
+      background: white;
+      box-shadow: -4px 0 20px rgba(0,0,0,0.1);
+      z-index: 91;
+      overflow-y: auto;
+      padding: 24px;
+      transition: right 0.25s ease;
+    }
+    .side-panel.open { right: 0; }
+    .side-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .side-panel-header h2 { margin: 0; font-size: 18px; }
+    .btn-close-panel {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: none;
+      background: #f8f9fa;
+      color: #6c757d;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+    .btn-close-panel:hover { background: #e9ecef; color: #333; }
+    .panel-section { margin-bottom: 24px; }
+    .panel-section-title {
+      font-weight: 600;
+      font-size: 14px;
+      color: #333;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #eee;
+    }
   </style>
 </head>
 <body>
-  <h1>Chronos MCP</h1>
-  <p class="subtitle">Cron-based scheduler for MCP tool calls</p>
-
-  <!-- What is this? -->
-  <div class="card">
-    <div class="card-header collapsible collapsed" onclick="toggleAbout('about-body', this)">
-      <h2>What is this?</h2>
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1>Chronos MCP</h1>
+      <p class="subtitle">Schedule automated Claude prompts and MCP tool calls</p>
     </div>
-    <div id="about-body" class="collapsible-content hidden">
-      <div class="about-content">
-        <p><strong>Chronos MCP</strong> is a cron-based scheduler that triggers MCP (Model Context Protocol) tool calls at configured times.</p>
-        <p>It connects to any MCP-compatible server via stdio or HTTP (Streamable) transports and invokes tools on a schedule defined by cron expressions.</p>
-        <p><strong>Key features:</strong></p>
-        <ul>
-          <li>Schedule any MCP tool call with cron expressions</li>
-          <li>Supports stdio and HTTP (Streamable) transports</li>
-          <li>Template variables like <code>{{now}}</code>, <code>{{date}}</code>, <code>{{time}}</code> resolved at trigger time</li>
-          <li>Execution logging with history</li>
-          <li>This server also exposes its own MCP interface, so LLMs can manage cron rules via MCP</li>
-        </ul>
-      </div>
+    <div class="page-header-actions">
+      <button class="btn-header" title="About" onclick="togglePanel('help-panel')">?</button>
+      <button class="btn-header" title="Logs &amp; Settings" onclick="togglePanel('settings-panel')">&#9881;</button>
     </div>
   </div>
 
@@ -631,22 +848,47 @@
   <div class="card">
     <div class="section-header">
       <h3>Scheduled Rules</h3>
-      <button class="btn-primary" onclick="openAddModal()">+ Add Rule</button>
+      <button class="btn-primary" onclick="openAddModal()">+ Add Trigger</button>
     </div>
     <div id="rules-list" class="rules-list">
       <div class="empty-state">
         <div class="icon">⏰</div>
-        <div>No rules yet. Add your first scheduled rule above.</div>
+        <div>No triggers yet. Add your first scheduled trigger above.</div>
       </div>
     </div>
   </div>
 
-  <!-- Logs -->
-  <div class="card">
-    <div class="card-header collapsible collapsed" onclick="toggleCard('logs-body', this)">
-      <h2>Execution Logs</h2>
+  <!-- Help panel (?) -->
+  <div class="side-panel-overlay" id="help-panel-overlay" onclick="closePanel('help-panel')"></div>
+  <div class="side-panel" id="help-panel">
+    <div class="side-panel-header">
+      <h2>About Chronos MCP</h2>
+      <button class="btn-close-panel" onclick="closePanel('help-panel')">&#10005;</button>
     </div>
-    <div id="logs-body" class="collapsible-content hidden">
+    <div class="about-content">
+      <p><strong>Chronos MCP</strong> is a cron-based scheduler that triggers MCP (Model Context Protocol) tool calls at configured times.</p>
+      <p>It connects to any MCP-compatible server via stdio or HTTP (Streamable) transports and invokes tools on a schedule defined by cron expressions.</p>
+      <p><strong>Key features:</strong></p>
+      <ul>
+        <li>Schedule any MCP tool call with cron expressions</li>
+        <li>Supports stdio and HTTP (Streamable) transports</li>
+        <li>Template variables like <code>{{now}}</code>, <code>{{date}}</code>, <code>{{time}}</code> resolved at trigger time</li>
+        <li>Execution logging with history</li>
+        <li>This server also exposes its own MCP interface, so LLMs can manage cron rules via MCP</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Settings panel (gear) -->
+  <div class="side-panel-overlay" id="settings-panel-overlay" onclick="closePanel('settings-panel')"></div>
+  <div class="side-panel" id="settings-panel">
+    <div class="side-panel-header">
+      <h2>Logs &amp; Settings</h2>
+      <button class="btn-close-panel" onclick="closePanel('settings-panel')">&#10005;</button>
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-section-title">Execution Logs</div>
       <div class="tabs">
         <button class="tab active" onclick="switchLogsTab('all', this)">All</button>
         <button class="tab" id="rule-logs-tab" onclick="switchLogsTab('rule', this)" style="display:none">Rule</button>
@@ -656,14 +898,9 @@
       </div>
       <button class="btn-secondary btn-sm" style="margin-top:12px" onclick="loadLogs()">Refresh</button>
     </div>
-  </div>
 
-  <!-- MCP Server -->
-  <div class="card">
-    <div class="card-header collapsible collapsed" onclick="toggleCard('mcp-server-body', this)">
-      <h2>MCP Server</h2>
-    </div>
-    <div id="mcp-server-body" class="collapsible-content hidden">
+    <div class="panel-section">
+      <div class="panel-section-title">MCP Server</div>
       <div id="mcp-server-info">
         <p style="color:#888;font-size:13px">Loading...</p>
       </div>
@@ -747,50 +984,82 @@
         <div id="cron-next-list"></div>
       </div>
 
-      <label for="f-tool">Tool Name</label>
-      <input type="text" id="f-tool" placeholder="echo">
+      <!-- Tier scanning indicator -->
+      <div id="tier-scanning" class="tier-scanning hidden">
+        <div class="spinner"></div>
+        <span>Discovering MCP servers...</span>
+      </div>
 
-      <label for="f-params">Parameters (JSON)</label>
-      <textarea id="f-params" placeholder='{"message": "{{now}}"}'></textarea>
-      <p class="hint">
-        Template vars: <code>{{now}}</code> <code>{{date}}</code> <code>{{time}}</code>
-        <code>{{timestamp}}</code> <code>{{year}}</code> <code>{{month}}</code>
-        <code>{{day}}</code> <code>{{hour}}</code> <code>{{minute}}</code> <code>{{second}}</code>
-      </p>
+      <!-- Tier status line -->
+      <div id="tier-status" class="tier-status hidden"></div>
 
-      <div class="field-group">
-        <legend>MCP Target</legend>
+      <!-- Tier 1: Claude/LLM prompt mode -->
+      <div id="tier1-section" class="hidden">
+        <label for="f-prompt">Prompt</label>
+        <textarea id="f-prompt" rows="6" placeholder="What should Claude do? e.g. Check https://example.com and summarize any changes since yesterday"></textarea>
+        <p class="hint">
+          Template vars: <code>{{now}}</code> <code>{{date}}</code> <code>{{time}}</code>
+          <code>{{timestamp}}</code> <code>{{year}}</code> <code>{{month}}</code>
+          <code>{{day}}</code> <code>{{hour}}</code> <code>{{minute}}</code> <code>{{second}}</code>
+        </p>
+        <button type="button" class="advanced-toggle" onclick="setTier(3)">&#9656; Advanced options</button>
+      </div>
 
-        <!-- Beacon discovery panel -->
-        <div class="beacon-panel" id="beacon-panel">
-          <div class="beacon-panel-header">
-            <span>Beacon Discovery</span>
-            <button type="button" class="btn-scan" id="beacon-scan-btn" onclick="runBeaconDiscovery()">Scan Network</button>
+      <!-- Tier 2: Beacon tool picker + smart params -->
+      <div id="tier2-section" class="hidden">
+        <label>Select Tool</label>
+        <div id="tier2-tools" class="tier2-tool-cards"></div>
+        <div id="tier2-params"></div>
+        <button type="button" class="advanced-toggle" onclick="setTier(3)">&#9656; Advanced options</button>
+      </div>
+
+      <!-- Tier 3: Full manual configuration -->
+      <div id="tier3-section">
+        <label for="f-tool">Tool Name</label>
+        <input type="text" id="f-tool" placeholder="echo">
+
+        <label for="f-params">Parameters (JSON)</label>
+        <textarea id="f-params" placeholder='{"message": "{{now}}"}'></textarea>
+        <p class="hint">
+          Template vars: <code>{{now}}</code> <code>{{date}}</code> <code>{{time}}</code>
+          <code>{{timestamp}}</code> <code>{{year}}</code> <code>{{month}}</code>
+          <code>{{day}}</code> <code>{{hour}}</code> <code>{{minute}}</code> <code>{{second}}</code>
+        </p>
+
+        <div class="field-group">
+          <legend>MCP Target</legend>
+
+          <!-- Beacon discovery panel -->
+          <div class="beacon-panel" id="beacon-panel">
+            <div class="beacon-panel-header">
+              <span>Beacon Discovery</span>
+              <button type="button" class="btn-scan" id="beacon-scan-btn" onclick="runBeaconDiscovery()">Scan Network</button>
+            </div>
+            <div id="beacon-loading" class="beacon-loading hidden">Scanning for MCP servers...</div>
+            <div id="beacon-empty" class="beacon-empty hidden">No servers found on the network.</div>
+            <div id="beacon-servers" class="beacon-servers-list"></div>
+            <div id="beacon-tools" class="beacon-tools-list"></div>
           </div>
-          <div id="beacon-loading" class="beacon-loading hidden">Scanning for MCP servers...</div>
-          <div id="beacon-empty" class="beacon-empty hidden">No servers found on the network.</div>
-          <div id="beacon-servers" class="beacon-servers-list"></div>
-          <div id="beacon-tools" class="beacon-tools-list"></div>
-        </div>
 
-        <label for="f-transport">Transport</label>
-        <select id="f-transport" onchange="onTransportChange()">
-          <option value="http">HTTP (Streamable)</option>
-          <option value="stdio">stdio</option>
-        </select>
+          <label for="f-transport">Transport</label>
+          <select id="f-transport" onchange="onTransportChange()">
+            <option value="http">HTTP (Streamable)</option>
+            <option value="stdio">stdio</option>
+          </select>
 
-        <div id="tf-http" class="transport-fields active">
-          <label for="f-url">Server URL</label>
-          <input type="url" id="f-url" placeholder="http://localhost:8080/mcp">
-          <label for="f-auth">Auth Token</label>
-          <input type="password" id="f-auth" placeholder="Optional bearer token">
-        </div>
+          <div id="tf-http" class="transport-fields active">
+            <label for="f-url">Server URL</label>
+            <input type="url" id="f-url" placeholder="http://localhost:8080/mcp">
+            <label for="f-auth">Auth Token</label>
+            <input type="password" id="f-auth" placeholder="Optional bearer token">
+          </div>
 
-        <div id="tf-stdio" class="transport-fields">
-          <label for="f-command">Command</label>
-          <input type="text" id="f-command" placeholder="npx">
-          <label for="f-args">Args (JSON array)</label>
-          <input type="text" id="f-args" placeholder='["-y", "my-mcp-server"]'>
+          <div id="tf-stdio" class="transport-fields">
+            <label for="f-command">Command</label>
+            <input type="text" id="f-command" placeholder="npx">
+            <label for="f-args">Args (JSON array)</label>
+            <input type="text" id="f-args" placeholder='["-y", "my-mcp-server"]'>
+          </div>
         </div>
       </div>
 
@@ -801,7 +1070,7 @@
 
       <div class="modal-actions">
         <button class="btn-secondary" onclick="closeModal()">Cancel</button>
-        <button class="btn-primary" onclick="saveRule()">Save Rule</button>
+        <button class="btn-primary" onclick="saveRule()">Save Trigger</button>
       </div>
     </div>
   </div>

@@ -7,6 +7,384 @@ let logsRuleName = '';
 let cronMode = 'simple';
 let _beaconServers = [];
 
+// Tier state
+let currentTier = 3;
+let _claudeDetection = null;   // { server, tool, promptParamName }
+let _selectedTier2 = null;     // { server, tool }
+let _tier2Servers = [];
+let _beaconCache = null;       // { servers, timestamp }
+
+// ── Claude / LLM Detection ──────────────────────────────────────────────────
+
+const CLAUDE_TOOL_PATTERNS = [
+  /^(query_?claude|ask_?claude|claude_?query|prompt_?claude)$/i,
+  /^(llm_?prompt|llm_?query|send_?prompt|run_?prompt)$/i,
+  /^(ask_?llm|query_?llm|chat|complete|generate)$/i,
+  /claude/i,
+];
+
+const CLAUDE_DESCRIPTION_KEYWORDS = [
+  'claude', 'llm', 'language model', 'anthropic',
+  'send a prompt', 'query claude', 'natural language',
+  'ai prompt', 'ask claude',
+];
+
+const PROMPT_PARAM_NAMES = ['prompt', 'message', 'query', 'text', 'input', 'content', 'question'];
+
+function detectClaudeTool(servers) {
+  for (const server of servers) {
+    for (const tool of server.tools || []) {
+      const nameMatch = CLAUDE_TOOL_PATTERNS.some(p => p.test(tool.name));
+      const descMatch = CLAUDE_DESCRIPTION_KEYWORDS.some(kw =>
+        (tool.description || '').toLowerCase().includes(kw)
+      );
+      if (nameMatch || descMatch) {
+        return { server, tool };
+      }
+    }
+  }
+  return null;
+}
+
+function findPromptParam(inputSchema) {
+  if (!inputSchema || !inputSchema.properties) return null;
+
+  // First pass: known prompt param names
+  for (const name of PROMPT_PARAM_NAMES) {
+    if (inputSchema.properties[name] && inputSchema.properties[name].type === 'string') {
+      return name;
+    }
+  }
+
+  // Second pass: single required string param
+  const required = inputSchema.required || [];
+  const stringParams = Object.entries(inputSchema.properties)
+    .filter(([, v]) => v.type === 'string');
+
+  if (stringParams.length === 1) return stringParams[0][0];
+
+  const requiredStrings = stringParams.filter(([k]) => required.includes(k));
+  if (requiredStrings.length === 1) return requiredStrings[0][0];
+
+  return null;
+}
+
+function classifyRule(rule) {
+  const isLLMTool = CLAUDE_TOOL_PATTERNS.some(p => p.test(rule.tool)) ||
+    CLAUDE_DESCRIPTION_KEYWORDS.some(kw => rule.tool.toLowerCase().includes(kw));
+
+  if (isLLMTool && rule.params) {
+    const promptParam = PROMPT_PARAM_NAMES.find(name =>
+      typeof rule.params[name] === 'string' && rule.params[name].length > 0
+    );
+    if (promptParam) return { type: 'claude', promptParam };
+  }
+
+  return { type: 'standard' };
+}
+
+// ── Tier Management ──────────────────────────────────────────────────────────
+
+function setTier(tier) {
+  const prev = currentTier;
+  currentTier = tier;
+
+  const t1 = document.getElementById('tier1-section');
+  const t2 = document.getElementById('tier2-section');
+  const t3 = document.getElementById('tier3-section');
+  const status = document.getElementById('tier-status');
+  const scanning = document.getElementById('tier-scanning');
+
+  scanning.classList.add('hidden');
+
+  // Copy data between tiers when switching
+  if (prev === 1 && tier === 3 && _claudeDetection) {
+    // Copy prompt into JSON params + fill tool/target
+    const prompt = document.getElementById('f-prompt').value;
+    const paramName = _claudeDetection.promptParamName || 'prompt';
+    document.getElementById('f-tool').value = _claudeDetection.tool.name;
+    document.getElementById('f-params').value = JSON.stringify({ [paramName]: prompt }, null, 2);
+    document.getElementById('f-transport').value = 'http';
+    document.getElementById('f-url').value = _claudeDetection.server.url;
+    document.getElementById('f-auth').value = '';
+    onTransportChange();
+  } else if (prev === 3 && tier === 1 && _claudeDetection) {
+    // Extract prompt from JSON params
+    try {
+      const params = JSON.parse(document.getElementById('f-params').value || '{}');
+      const paramName = _claudeDetection.promptParamName || 'prompt';
+      if (params[paramName]) {
+        document.getElementById('f-prompt').value = params[paramName];
+      }
+    } catch { /* ignore */ }
+  } else if (prev === 2 && tier === 3 && _selectedTier2) {
+    // Copy tier 2 selection into tier 3 fields
+    document.getElementById('f-tool').value = _selectedTier2.tool.name;
+    document.getElementById('f-transport').value = 'http';
+    document.getElementById('f-url').value = _selectedTier2.server.url;
+    document.getElementById('f-auth').value = '';
+    onTransportChange();
+    // Copy smart params into JSON
+    const params = gatherTier2Params();
+    if (params) {
+      document.getElementById('f-params').value = JSON.stringify(params, null, 2);
+    }
+  }
+
+  // Show/hide sections
+  t1.classList.toggle('hidden', tier !== 1);
+  t2.classList.toggle('hidden', tier !== 2);
+  t3.classList.toggle('hidden', tier !== 3);
+
+  // Update status line
+  updateTierStatus();
+}
+
+function updateTierStatus() {
+  const status = document.getElementById('tier-status');
+
+  if (currentTier === 1 && _claudeDetection) {
+    status.className = 'tier-status connected';
+    status.innerHTML = `
+      <span class="tier-status-dot"></span>
+      <span>Claude connected via beacon</span>
+      <button type="button" class="tier-status-action" onclick="switchToTier2()">Use different tool</button>
+    `;
+    status.classList.remove('hidden');
+  } else if (currentTier === 2 && _tier2Servers.length > 0) {
+    status.className = 'tier-status beacon';
+    const serverCount = _tier2Servers.length;
+    const toolCount = _tier2Servers.reduce((n, s) => n + (s.tools || []).length, 0);
+    status.innerHTML = `
+      <span class="tier-status-dot"></span>
+      <span>${serverCount} server${serverCount > 1 ? 's' : ''} found (${toolCount} tools)</span>
+      <button type="button" class="tier-status-action" onclick="setTier(3)">Configure manually</button>
+    `;
+    status.classList.remove('hidden');
+  } else if (currentTier === 3) {
+    if (_tier2Servers.length > 0 || _claudeDetection) {
+      status.className = 'tier-status manual';
+      const actions = [];
+      if (_claudeDetection) actions.push('<button type="button" class="tier-status-action" onclick="setTier(1)">Claude mode</button>');
+      if (_tier2Servers.length > 0) actions.push('<button type="button" class="tier-status-action" onclick="switchToTier2()">Beacon tools</button>');
+      status.innerHTML = `
+        <span>Manual configuration</span>
+        <span style="margin-left:auto;display:flex;gap:12px">${actions.join('')}</span>
+      `;
+      status.classList.remove('hidden');
+    } else {
+      status.className = 'tier-status manual';
+      status.innerHTML = `
+        <span>No beacon servers found</span>
+        <button type="button" class="tier-status-action" onclick="runBeaconRescan()">Scan again</button>
+      `;
+      status.classList.remove('hidden');
+    }
+  }
+}
+
+function switchToTier2() {
+  if (_tier2Servers.length > 0) {
+    setTier(2);
+    renderTier2Tools(_tier2Servers);
+  }
+}
+
+async function autoDetectTier() {
+  const scanning = document.getElementById('tier-scanning');
+  scanning.classList.remove('hidden');
+
+  try {
+    let servers;
+
+    // Use cache if fresh (30 seconds)
+    if (_beaconCache && Date.now() - _beaconCache.timestamp < 30000) {
+      servers = _beaconCache.servers;
+    } else {
+      const response = await fetch('/api/beacon/discover');
+      const data = await response.json();
+      servers = data.servers || [];
+      _beaconCache = { servers, timestamp: Date.now() };
+    }
+
+    scanning.classList.add('hidden');
+    _tier2Servers = servers;
+    _beaconServers = servers;
+
+    if (servers.length === 0) {
+      setTier(3);
+      return;
+    }
+
+    const claude = detectClaudeTool(servers);
+    if (claude) {
+      _claudeDetection = {
+        server: claude.server,
+        tool: claude.tool,
+        promptParamName: findPromptParam(claude.tool.inputSchema) || 'prompt',
+      };
+      setTier(1);
+    } else {
+      setTier(2);
+      renderTier2Tools(servers);
+    }
+  } catch {
+    scanning.classList.add('hidden');
+    setTier(3);
+  }
+}
+
+async function runBeaconRescan() {
+  _beaconCache = null;
+  await autoDetectTier();
+}
+
+// ── Tier 2: Tool Picker & Smart Params ───────────────────────────────────────
+
+function renderTier2Tools(servers) {
+  const container = document.getElementById('tier2-tools');
+  const cards = [];
+
+  servers.forEach((server, si) => {
+    (server.tools || []).forEach((tool, ti) => {
+      const isSelected = _selectedTier2 &&
+        _selectedTier2.server.url === server.url &&
+        _selectedTier2.tool.name === tool.name;
+      cards.push(`
+        <div class="tier2-tool-card ${isSelected ? 'selected' : ''}"
+             onclick="selectTier2Tool(${si}, ${ti})"
+             data-si="${si}" data-ti="${ti}">
+          <div class="tier2-tool-card-name">${escHtml(tool.name)}</div>
+          ${tool.description ? `<div class="tier2-tool-card-desc">${escHtml(tool.description)}</div>` : ''}
+          ${servers.length > 1 ? `<div class="tier2-tool-card-server">${escHtml(server.name)}</div>` : ''}
+        </div>
+      `);
+    });
+  });
+
+  if (cards.length === 0) {
+    container.innerHTML = '<div style="color:#6c757d;font-size:13px;padding:12px;text-align:center">No tools found on discovered servers.</div>';
+    return;
+  }
+
+  container.innerHTML = cards.join('');
+
+  // Auto-select first tool if nothing selected
+  if (!_selectedTier2 && servers[0] && servers[0].tools && servers[0].tools.length > 0) {
+    selectTier2Tool(0, 0);
+  }
+}
+
+function selectTier2Tool(serverIndex, toolIndex) {
+  const server = _tier2Servers[serverIndex];
+  if (!server) return;
+  const tool = server.tools[toolIndex];
+  if (!tool) return;
+
+  _selectedTier2 = { server, tool };
+
+  // Highlight selected card
+  document.querySelectorAll('.tier2-tool-card').forEach(el => {
+    el.classList.toggle('selected',
+      parseInt(el.dataset.si) === serverIndex && parseInt(el.dataset.ti) === toolIndex
+    );
+  });
+
+  renderSmartParams(tool.inputSchema);
+}
+
+function renderSmartParams(inputSchema) {
+  const container = document.getElementById('tier2-params');
+
+  if (!inputSchema || !inputSchema.properties) {
+    container.innerHTML = `
+      <label for="t2-json-params">Parameters (JSON)</label>
+      <textarea id="t2-json-params" class="t2-json-params" placeholder='{"key": "value"}'>{}</textarea>
+    `;
+    return;
+  }
+
+  const props = Object.entries(inputSchema.properties);
+  const required = new Set(inputSchema.required || []);
+
+  // Single string property → simple textarea
+  if (props.length === 1 && props[0][1].type === 'string') {
+    const [key, schema] = props[0];
+    container.innerHTML = `
+      <label for="t2-smart-${key}">${escHtml(schema.description || key)}</label>
+      <textarea id="t2-smart-${key}" class="smart-param-textarea" data-key="${escAttr(key)}"
+        placeholder="${escAttr(schema.description || '')}">${escHtml(TEMPLATE_MAP[key] || '')}</textarea>
+      <p class="hint">Template vars: <code>{{now}}</code> <code>{{date}}</code> <code>{{time}}</code></p>
+    `;
+    return;
+  }
+
+  // 2-4 simple properties → individual inputs
+  const simpleTypes = ['string', 'number', 'integer', 'boolean'];
+  const allSimple = props.length <= 4 && props.every(([, v]) => simpleTypes.includes(v.type));
+
+  if (allSimple) {
+    container.innerHTML = props.map(([key, schema]) => {
+      const isReq = required.has(key);
+      const defaultVal = TEMPLATE_MAP[key] || '';
+      if (schema.type === 'boolean') {
+        return `
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="t2-smart-${key}" data-key="${escAttr(key)}" data-type="boolean" style="width:auto;margin:0">
+            <span>${escHtml(schema.description || key)}${isReq ? ' *' : ''}</span>
+          </label>
+        `;
+      }
+      const inputType = schema.type === 'number' || schema.type === 'integer' ? 'number' : 'text';
+      return `
+        <label for="t2-smart-${key}">${escHtml(schema.description || key)}${isReq ? ' *' : ''}</label>
+        <input type="${inputType}" id="t2-smart-${key}" data-key="${escAttr(key)}" data-type="${schema.type}"
+          placeholder="${escAttr(schema.description || key)}" value="${escAttr(defaultVal)}">
+      `;
+    }).join('') + '<p class="hint">Template vars: <code>{{now}}</code> <code>{{date}}</code> <code>{{time}}</code></p>';
+    return;
+  }
+
+  // Complex → JSON textarea
+  const generated = generateParamsFromSchema(inputSchema);
+  container.innerHTML = `
+    <label for="t2-json-params">Parameters (JSON)</label>
+    <textarea id="t2-json-params" class="t2-json-params" placeholder='{"key": "value"}'>${escHtml(JSON.stringify(generated, null, 2))}</textarea>
+    <p class="hint">Template vars: <code>{{now}}</code> <code>{{date}}</code> <code>{{time}}</code></p>
+  `;
+}
+
+function gatherTier2Params() {
+  // Check for JSON textarea fallback
+  const jsonArea = document.getElementById('t2-json-params');
+  if (jsonArea) {
+    try {
+      return JSON.parse(jsonArea.value || '{}');
+    } catch {
+      showToast('Invalid JSON in parameters', 'error');
+      return null;
+    }
+  }
+
+  // Gather from smart fields
+  const params = {};
+  document.querySelectorAll('[id^="t2-smart-"]').forEach(el => {
+    const key = el.dataset.key;
+    if (!key) return;
+    if (el.dataset.type === 'boolean') {
+      params[key] = el.checked;
+    } else if (el.dataset.type === 'number' || el.dataset.type === 'integer') {
+      params[key] = el.value ? Number(el.value) : '';
+    } else if (el.tagName === 'TEXTAREA') {
+      params[key] = el.value;
+    } else {
+      params[key] = el.value;
+    }
+  });
+
+  return params;
+}
+
 // ── Status polling ────────────────────────────────────────────────────────────
 
 async function updateStatus() {
@@ -51,33 +429,53 @@ function renderRules() {
     container.innerHTML = `
       <div class="empty-state">
         <div class="icon">⏰</div>
-        <div>No rules yet. Add your first scheduled rule above.</div>
+        <div>No triggers yet. Add your first scheduled trigger above.</div>
       </div>`;
     return;
   }
 
-  container.innerHTML = rules.map(rule => `
-    <div class="rule-card ${rule.enabled ? '' : 'disabled'}" id="rule-${rule.id}">
-      <label class="toggle" title="${rule.enabled ? 'Disable' : 'Enable'}">
-        <input type="checkbox" ${rule.enabled ? 'checked' : ''} onchange="toggleRule('${rule.id}')">
-        <span class="toggle-slider"></span>
-      </label>
-      <div class="rule-info">
-        <div class="rule-name">${escHtml(rule.name)}</div>
+  container.innerHTML = rules.map(rule => {
+    const cls = classifyRule(rule);
+    let metaHtml;
+
+    if (cls.type === 'claude') {
+      const promptText = rule.params[cls.promptParam] || '';
+      metaHtml = `
+        <div class="rule-meta">
+          <span>⏱ <code>${escHtml(rule.schedule)}</code></span>
+          <span class="rule-badge-claude">Claude</span>
+        </div>
+        <div class="rule-prompt">${escHtml(promptText)}</div>
+      `;
+    } else {
+      metaHtml = `
         <div class="rule-meta">
           <span>⏱ <code>${escHtml(rule.schedule)}</code></span>
           <span>⚡ <code>${escHtml(rule.tool)}</code></span>
           <span>🔌 ${escHtml(rule.target.transport)}${rule.target.url ? ` · <code>${escHtml(rule.target.url)}</code>` : rule.target.command ? ` · <code>${escHtml(rule.target.command)}</code>` : ''}</span>
         </div>
+      `;
+    }
+
+    return `
+      <div class="rule-card ${rule.enabled ? '' : 'disabled'}" id="rule-${rule.id}">
+        <label class="toggle" title="${rule.enabled ? 'Disable' : 'Enable'}">
+          <input type="checkbox" ${rule.enabled ? 'checked' : ''} onchange="toggleRule('${rule.id}')">
+          <span class="toggle-slider"></span>
+        </label>
+        <div class="rule-info">
+          <div class="rule-name">${escHtml(rule.name)}</div>
+          ${metaHtml}
+        </div>
+        <div class="rule-actions">
+          <button class="btn-icon btn-sm" title="Run now" onclick="triggerRule('${rule.id}', '${escAttr(rule.name)}')">▶</button>
+          <button class="btn-icon btn-sm" title="Logs" onclick="viewRuleLogs('${rule.id}', '${escAttr(rule.name)}')">📋</button>
+          <button class="btn-icon btn-sm" title="Edit" onclick="openEditModal('${rule.id}')">✏️</button>
+          <button class="btn-icon btn-sm" title="Delete" onclick="deleteRule('${rule.id}', '${escAttr(rule.name)}')">🗑️</button>
+        </div>
       </div>
-      <div class="rule-actions">
-        <button class="btn-icon btn-sm" title="Run now" onclick="triggerRule('${rule.id}', '${escAttr(rule.name)}')">▶</button>
-        <button class="btn-icon btn-sm" title="Logs" onclick="viewRuleLogs('${rule.id}', '${escAttr(rule.name)}')">📋</button>
-        <button class="btn-icon btn-sm" title="Edit" onclick="openEditModal('${rule.id}')">✏️</button>
-        <button class="btn-icon btn-sm" title="Delete" onclick="deleteRule('${rule.id}', '${escAttr(rule.name)}')">🗑️</button>
-      </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 async function toggleRule(id) {
@@ -118,12 +516,6 @@ function viewRuleLogs(id, name) {
   logsRuleId = id;
   logsRuleName = name;
 
-  // Expand logs card
-  const body = document.getElementById('logs-body');
-  const header = document.querySelector('#logs-body').previousElementSibling;
-  body.classList.remove('hidden');
-  header.classList.remove('collapsed');
-
   // Show rule tab
   const ruleTab = document.getElementById('rule-logs-tab');
   ruleTab.style.display = '';
@@ -133,17 +525,18 @@ function viewRuleLogs(id, name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   ruleTab.classList.add('active');
 
-  loadLogs();
-  ruleTab.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  // Open settings panel and load logs
+  togglePanel('settings-panel');
 }
 
 // ── Modal ─────────────────────────────────────────────────────────────────────
 
 function openAddModal() {
   editingRuleId = null;
-  document.getElementById('modal-title').textContent = 'Add Rule';
+  document.getElementById('modal-title').textContent = 'Add Trigger';
   clearForm();
   document.getElementById('rule-modal').classList.remove('hidden');
+  autoDetectTier();
 }
 
 function openEditModal(id) {
@@ -151,9 +544,62 @@ function openEditModal(id) {
   if (!rule) return;
 
   editingRuleId = id;
-  document.getElementById('modal-title').textContent = 'Edit Rule';
+  document.getElementById('modal-title').textContent = 'Edit Trigger';
+
+  // Classify rule to determine which tier to show
+  const cls = classifyRule(rule);
+
+  // Fill the full form first (tier 3 fields)
   fillForm(rule);
+
+  if (cls.type === 'claude') {
+    // Fill prompt textarea
+    document.getElementById('f-prompt').value = rule.params[cls.promptParam] || '';
+
+    // Try to detect Claude server from beacon for proper state
+    _claudeDetection = {
+      server: { url: rule.target.url, name: 'Claude' },
+      tool: { name: rule.tool, inputSchema: null },
+      promptParamName: cls.promptParam,
+    };
+    currentTier = 3; // set before setTier to avoid unwanted data copy
+    setTier(1);
+  } else {
+    currentTier = 3;
+    setTier(3);
+  }
+
   document.getElementById('rule-modal').classList.remove('hidden');
+
+  // Background scan to refresh detection state
+  autoDetectTier_background(rule);
+}
+
+async function autoDetectTier_background(rule) {
+  // Silently scan beacon to update status line, but don't change tier
+  try {
+    let servers;
+    if (_beaconCache && Date.now() - _beaconCache.timestamp < 30000) {
+      servers = _beaconCache.servers;
+    } else {
+      const response = await fetch('/api/beacon/discover');
+      const data = await response.json();
+      servers = data.servers || [];
+      _beaconCache = { servers, timestamp: Date.now() };
+    }
+    _tier2Servers = servers;
+    _beaconServers = servers;
+
+    const claude = detectClaudeTool(servers);
+    if (claude) {
+      _claudeDetection = {
+        server: claude.server,
+        tool: claude.tool,
+        promptParamName: findPromptParam(claude.tool.inputSchema) || _claudeDetection?.promptParamName || 'prompt',
+      };
+    }
+    updateTierStatus();
+  } catch { /* silent */ }
 }
 
 function closeModal() {
@@ -175,6 +621,13 @@ function clearForm() {
   document.getElementById('f-enabled').checked = true;
   onTransportChange();
 
+  // Reset tier state
+  document.getElementById('f-prompt').value = '';
+  document.getElementById('tier2-tools').innerHTML = '';
+  document.getElementById('tier2-params').innerHTML = '';
+  _selectedTier2 = null;
+  currentTier = 3;
+
   // Reset cron selector
   setCronMode('simple');
   document.getElementById('cron-frequency').value = 'day';
@@ -184,11 +637,10 @@ function clearForm() {
   document.querySelectorAll('.cron-preset-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('cron-next-runs').classList.add('hidden');
 
-  // Reset beacon
+  // Reset beacon (tier 3)
   document.getElementById('beacon-servers').innerHTML = '';
   document.getElementById('beacon-tools').innerHTML = '';
   document.getElementById('beacon-empty').classList.add('hidden');
-  _beaconServers = [];
 }
 
 function fillForm(rule) {
@@ -221,9 +673,41 @@ async function saveRule() {
     ? document.getElementById('f-schedule').value
     : document.getElementById('f-schedule-value').value
   ).trim();
+  const enabled = document.getElementById('f-enabled').checked;
+
+  // Tier 1: Claude prompt mode
+  if (currentTier === 1 && _claudeDetection) {
+    const promptText = document.getElementById('f-prompt').value.trim();
+    if (!name || !schedule || !promptText) {
+      showToast('Name, schedule, and prompt are required', 'error');
+      return;
+    }
+
+    const tool = _claudeDetection.tool.name;
+    const paramName = _claudeDetection.promptParamName || 'prompt';
+    const params = { [paramName]: promptText };
+    const target = { transport: 'http', url: _claudeDetection.server.url };
+
+    return await submitRule({ name, schedule, tool, params, target, enabled });
+  }
+
+  // Tier 2: Beacon tool picker
+  if (currentTier === 2 && _selectedTier2) {
+    if (!name || !schedule) {
+      showToast('Name and schedule are required', 'error');
+      return;
+    }
+    const tool = _selectedTier2.tool.name;
+    const params = gatherTier2Params();
+    if (params === null) return; // JSON parse error
+    const target = { transport: 'http', url: _selectedTier2.server.url };
+
+    return await submitRule({ name, schedule, tool, params, target, enabled });
+  }
+
+  // Tier 3: Full manual mode
   const tool = document.getElementById('f-tool').value.trim();
   const transport = document.getElementById('f-transport').value;
-  const enabled = document.getElementById('f-enabled').checked;
 
   if (!name || !schedule || !tool) {
     showToast('Name, schedule, and tool are required', 'error');
@@ -254,8 +738,10 @@ async function saveRule() {
     if (auth) target.authToken = auth;
   }
 
-  const body = { name, schedule, tool, params, target, enabled };
+  return await submitRule({ name, schedule, tool, params, target, enabled });
+}
 
+async function submitRule(body) {
   try {
     let res;
     if (editingRuleId) {
@@ -275,7 +761,7 @@ async function saveRule() {
     const result = await res.json();
     if (!res.ok) throw new Error(JSON.stringify(result.error));
 
-    showToast(editingRuleId ? 'Rule updated' : 'Rule created');
+    showToast(editingRuleId ? 'Trigger updated' : 'Trigger created');
     closeModal();
     await loadRules();
   } catch (e) {
@@ -339,20 +825,34 @@ function switchLogsTab(tab, btn) {
   loadLogs();
 }
 
-// ── Collapsible ───────────────────────────────────────────────────────────────
+// ── Panels ────────────────────────────────────────────────────────────────────
 
-function toggleAbout(bodyId, header) {
-  document.getElementById(bodyId).classList.toggle('hidden');
-  header.classList.toggle('collapsed');
+function togglePanel(panelId) {
+  const panel = document.getElementById(panelId);
+  const overlay = document.getElementById(panelId + '-overlay');
+  const isOpen = panel.classList.contains('open');
+
+  // Close any other open panels first
+  document.querySelectorAll('.side-panel.open').forEach(p => {
+    p.classList.remove('open');
+    const ov = document.getElementById(p.id + '-overlay');
+    if (ov) ov.classList.remove('open');
+  });
+
+  if (!isOpen) {
+    panel.classList.add('open');
+    overlay.classList.add('open');
+    // Load content when opening settings panel
+    if (panelId === 'settings-panel') {
+      loadLogs();
+      loadMcpServerInfo();
+    }
+  }
 }
 
-function toggleCard(bodyId, header) {
-  document.getElementById(bodyId).classList.toggle('hidden');
-  header.classList.toggle('collapsed');
-  if (!document.getElementById(bodyId).classList.contains('hidden')) {
-    if (bodyId === 'logs-body') loadLogs();
-    if (bodyId === 'mcp-server-body') loadMcpServerInfo();
-  }
+function closePanel(panelId) {
+  document.getElementById(panelId).classList.remove('open');
+  document.getElementById(panelId + '-overlay').classList.remove('open');
 }
 
 // ── MCP Server Info ──────────────────────────────────────────────────────────
@@ -412,7 +912,6 @@ function copyText(elementId) {
 function copyBlock(elementId) {
   const el = document.getElementById(elementId);
   if (!el) return;
-  // Get text content excluding the copy button
   const clone = el.cloneNode(true);
   const btn = clone.querySelector('.btn-copy');
   if (btn) btn.remove();
@@ -490,10 +989,8 @@ function setCronMode(mode) {
   document.getElementById('cron-advanced').classList.toggle('hidden', mode !== 'advanced');
 
   if (mode === 'advanced') {
-    // Sync hidden value to the visible input
     document.getElementById('f-schedule').value = document.getElementById('f-schedule-value').value;
   } else {
-    // Try to parse advanced input back into builder
     const expr = document.getElementById('f-schedule').value.trim();
     if (expr) {
       setCronExpression(expr);
@@ -512,7 +1009,6 @@ function setCronExpression(expr) {
   document.getElementById('f-schedule-value').value = expr;
   document.getElementById('f-schedule').value = expr;
 
-  // Try to reverse-parse into builder
   const parts = expr.split(/\s+/);
   if (parts.length !== 5) return;
 
@@ -546,7 +1042,6 @@ function setCronExpression(expr) {
 
 function nearestMinOption(val) {
   const n = parseInt(val);
-  // Snap to nearest 5-minute option
   return String(Math.round(n / 5) * 5 % 60);
 }
 
@@ -565,7 +1060,6 @@ function updateBuilderVisibility() {
   document.getElementById('cron-weekday').classList.toggle('hidden', !showWeekday);
   document.getElementById('cron-monthday').classList.toggle('hidden', !showMonthday);
 
-  // For hourly, hide hour selector and only show minute
   document.getElementById('cron-hour').classList.toggle('hidden', freq === 'hour' || freq === 'minute');
   document.getElementById('cron-colon').classList.toggle('hidden', freq === 'hour' || freq === 'minute');
   if (freq === 'hour') {
@@ -597,7 +1091,6 @@ function updateCronFromBuilder() {
   document.getElementById('f-schedule-value').value = expr;
   document.getElementById('f-schedule').value = expr;
 
-  // Clear active preset
   document.querySelectorAll('.cron-preset-btn').forEach(b => b.classList.remove('active'));
 
   updateCronPreview(expr);
@@ -622,10 +1115,6 @@ function updateCronPreview(expr) {
   }
 }
 
-/**
- * Simple cron next-run calculator for 5-field expressions.
- * Handles: specific values, *, ranges (1-5), steps (*​/5), lists (1,3,5).
- */
 function getNextCronRuns(expr, count) {
   const parts = expr.trim().split(/\s+/);
   if (parts.length !== 5) throw new Error('Invalid cron');
@@ -637,7 +1126,7 @@ function getNextCronRuns(expr, count) {
   const now = new Date();
   let cursor = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes() + 1, 0, 0);
 
-  const maxIter = 525960; // ~1 year of minutes
+  const maxIter = 525960;
   for (let i = 0; i < maxIter && results.length < count; i++) {
     const m = cursor.getMinutes();
     const h = cursor.getHours();
@@ -656,13 +1145,10 @@ function getNextCronRuns(expr, count) {
 
 function parseCronField(field) {
   const values = new Set();
-  const ranges = { minute: [0, 59], hour: [0, 23], dom: [1, 31], month: [1, 12], dow: [0, 6] };
 
-  // Determine field index from caller — not available here, so use generic approach
   for (const part of field.split(',')) {
     if (part === '*') {
-      // Will be handled with range below
-      return new Set(Array.from({ length: 60 }, (_, i) => i)); // max range, will be intersected
+      return new Set(Array.from({ length: 60 }, (_, i) => i));
     }
 
     const stepMatch = part.match(/^(\*|\d+-\d+)\/(\d+)$/);
@@ -688,9 +1174,8 @@ function parseCronField(field) {
   return values.size > 0 ? values : new Set(Array.from({ length: 60 }, (_, i) => i));
 }
 
-// ── Beacon Discovery ─────────────────────────────────────────────────────────
+// ── Beacon Discovery (Tier 3 legacy) ────────────────────────────────────────
 
-// Template variable mapping for auto-generating params from tool schemas
 const TEMPLATE_MAP = {
   now: '{{now}}',
   date: '{{date}}',

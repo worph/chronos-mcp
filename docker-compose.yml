@@ -15,7 +15,7 @@ services:
       - NODE_ENV=production
       - TZ=UTC
       - CONFIG_PATH=/app/data/config.json
-      - DISCOVERY_PORT=9099
+      - BEACON_URL=http://beacon:9300
       - MCP_PORT=9054
     networks:
       - mcp-network
