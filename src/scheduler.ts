@@ -18,7 +18,8 @@ async function executeTool(rule: CronRule): Promise<void> {
 
   try {
     const resolvedParams = resolveParams(rule.params);
-    const result = await callTool(rule.target, rule.tool, resolvedParams);
+    const timeoutMs = rule.timeout ? rule.timeout * 1000 : undefined;
+    const result = await callTool(rule.target, rule.tool, resolvedParams, timeoutMs);
 
     addLog({
       id: uuidv4(),

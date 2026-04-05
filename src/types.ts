@@ -16,6 +16,7 @@ export const CronRuleSchema = z.object({
   target: TargetConfigSchema,
   tool: z.string().min(1),
   params: z.record(z.unknown()),
+  timeout: z.number().int().positive().optional(),
 });
 
 export const AppConfigSchema = z.object({

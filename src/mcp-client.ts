@@ -30,7 +30,8 @@ function wrapTransport(inner: Transport): Transport {
 export async function callTool(
   target: TargetConfig,
   toolName: string,
-  params: Record<string, unknown>
+  params: Record<string, unknown>,
+  timeoutMs?: number
 ): Promise<unknown> {
   const client = new Client(
     { name: "chronos-mcp-client", version: "1.0.0" },
@@ -66,7 +67,7 @@ export async function callTool(
     const result = await client.callTool(
       { name: toolName, arguments: params },
       undefined,
-      { timeout: TOOL_TIMEOUT_MS }
+      { timeout: timeoutMs ?? TOOL_TIMEOUT_MS }
     );
 
     return result;

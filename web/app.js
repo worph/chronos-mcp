@@ -619,6 +619,7 @@ function clearForm() {
   document.getElementById('f-command').value = '';
   document.getElementById('f-args').value = '[]';
   document.getElementById('f-enabled').checked = true;
+  document.getElementById('f-timeout').value = '';
   onTransportChange();
 
   // Reset tier state
@@ -653,6 +654,7 @@ function fillForm(rule) {
   document.getElementById('f-command').value = rule.target.command || '';
   document.getElementById('f-args').value = JSON.stringify(rule.target.args || []);
   document.getElementById('f-enabled').checked = rule.enabled;
+  document.getElementById('f-timeout').value = rule.timeout || '';
   onTransportChange();
 
   // Set cron schedule
@@ -674,6 +676,8 @@ async function saveRule() {
     : document.getElementById('f-schedule-value').value
   ).trim();
   const enabled = document.getElementById('f-enabled').checked;
+  const timeoutVal = document.getElementById('f-timeout').value.trim();
+  const timeout = timeoutVal ? parseInt(timeoutVal, 10) : undefined;
 
   // Tier 1: Claude prompt mode
   if (currentTier === 1 && _claudeDetection) {
@@ -688,7 +692,7 @@ async function saveRule() {
     const params = { [paramName]: promptText };
     const target = { transport: 'http', url: _claudeDetection.server.url };
 
-    return await submitRule({ name, schedule, tool, params, target, enabled });
+    return await submitRule({ name, schedule, tool, params, target, enabled, timeout });
   }
 
   // Tier 2: Beacon tool picker
@@ -702,7 +706,7 @@ async function saveRule() {
     if (params === null) return; // JSON parse error
     const target = { transport: 'http', url: _selectedTier2.server.url };
 
-    return await submitRule({ name, schedule, tool, params, target, enabled });
+    return await submitRule({ name, schedule, tool, params, target, enabled, timeout });
   }
 
   // Tier 3: Full manual mode
@@ -738,7 +742,7 @@ async function saveRule() {
     if (auth) target.authToken = auth;
   }
 
-  return await submitRule({ name, schedule, tool, params, target, enabled });
+  return await submitRule({ name, schedule, tool, params, target, enabled, timeout });
 }
 
 async function submitRule(body) {
